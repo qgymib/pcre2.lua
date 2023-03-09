@@ -1,5 +1,8 @@
 #ifndef __LUA_PCRE2_H__
 #define __LUA_PCRE2_H__
+
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -9,11 +12,17 @@ typedef struct lpcre2_code lpcre2_code_t;
 
 typedef enum lpcre2_option
 {
-    LPCRE2_SUBSTITUTE_GLOBAL            = 0x00000100u,
-    LPCRE2_SUBSTITUTE_EXTENDED          = 0x00000200u,
-    LPCRE2_SUBSTITUTE_UNSET_EMPTY       = 0x00000400u,
-    LPCRE2_SUBSTITUTE_UNKNOWN_UNSET     = 0x00000800u,
-    LPCRE2_SUBSTITUTE_REPLACEMENT_ONLY  = 0x00020000u,
+    LPCRE2_ALLOW_EMPTY_CLASS            = 0x00000001u,
+    LPCRE2_DOTALL                       = 0x00000020u,
+    LPCRE2_EXTENDED                     = 0x00000080u,
+    LPCRE2_MULTILINE                    = 0x00000400u,
+    
+
+    LPCRE2_SUBSTITUTE_GLOBAL            = 0x00000100u,  /**< For #lpcre2_substitute() */
+    LPCRE2_SUBSTITUTE_EXTENDED          = 0x00000200u,  /**< For #lpcre2_substitute() */
+    LPCRE2_SUBSTITUTE_UNSET_EMPTY       = 0x00000400u,  /**< For #lpcre2_substitute() */
+    LPCRE2_SUBSTITUTE_UNKNOWN_UNSET     = 0x00000800u,  /**< For #lpcre2_substitute() */
+    LPCRE2_SUBSTITUTE_REPLACEMENT_ONLY  = 0x00020000u,  /**< For #lpcre2_substitute() */
 } lpcre2_option_t;
 
 /**
@@ -52,7 +61,7 @@ lpcre2_code_t* lpcre2_compile(struct lua_State* L, const char* pattern,
  */
 const char* lpcre2_substitute(struct lua_State* L, lpcre2_code_t* code,
     const char* subject, size_t length, const char* replacement, size_t rlength,
-    size_t* len);
+    uint32_t options, size_t* len);
 
 #ifdef __cplusplus
 }

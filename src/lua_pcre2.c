@@ -4,10 +4,6 @@
  * such as pcre2_compile().
  */
 #define PCRE2_CODE_UNIT_WIDTH 8
-/**
- * Statically link PCRE2
- */
-#define PCRE2_STATIC
 #include <pcre2.h>
 
 #include "lua.h"
@@ -17,6 +13,11 @@
 #define LPCRE2_CODE_NAME    "_lpcre2_code"
 
 #define LPCRE2_OPTION_MAP(xx)   \
+    xx(LPCRE2_ALLOW_EMPTY_CLASS,            PCRE2_ALLOW_EMPTY_CLASS)        \
+    xx(LPCRE2_DOTALL,                       PCRE2_DOTALL)                   \
+    xx(LPCRE2_EXTENDED,                     PCRE2_EXTENDED)                 \
+    xx(LPCRE2_MULTILINE,                    PCRE2_MULTILINE)                \
+                                                                            \
     xx(LPCRE2_SUBSTITUTE_GLOBAL,            PCRE2_SUBSTITUTE_GLOBAL)        \
     xx(LPCRE2_SUBSTITUTE_EXTENDED,          PCRE2_SUBSTITUTE_EXTENDED)      \
     xx(LPCRE2_SUBSTITUTE_UNSET_EMPTY,       PCRE2_SUBSTITUTE_UNSET_EMPTY)   \
@@ -52,7 +53,10 @@ static int _lpcre2_substitute(lua_State* L)
     size_t replace_sz = 0;
     const char* replace = luaL_checklstring(L, 3, &replace_sz);
 
-    lpcre2_substitute(L, code, content, content_sz, replace, replace_sz, NULL);
+    uint32_t options = (uint32_t)lua_tointeger(L, 4);
+
+    lpcre2_substitute(L, code, content, content_sz, replace, replace_sz,
+        options, NULL);
 
     return 1;
 }
@@ -62,7 +66,9 @@ static int _lpcre2_compile(lua_State* L)
     size_t pattern_sz = 0;
     const char* pattern = luaL_checklstring(L, 1, &pattern_sz);
 
-    lpcre2_compile(L, pattern, pattern_sz, PCRE2_MULTILINE);
+    uint32_t options = (uint32_t)lua_tointeger(L, 2);
+
+    lpcre2_compile(L, pattern, pattern_sz, options);
 
     return 1;
 }
@@ -156,7 +162,7 @@ lpcre2_code_t* lpcre2_compile(lua_State* L, const char* pattern,
 
 const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
     const char* subject, size_t length, const char* replacement, size_t rlength,
-    size_t* len)
+    uint32_t options, size_t* len)
 {
     int ret;
 
@@ -165,7 +171,7 @@ const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
         (PCRE2_SPTR)subject,
         length,
         0,
-        PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH | PCRE2_SUBSTITUTE_EXTENDED,
+        options | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH,
         NULL,
         NULL,
         (PCRE2_SPTR)replacement,
@@ -184,7 +190,7 @@ const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
         (PCRE2_SPTR)subject,
         length,
         0,
-        PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED,
+        options,
         NULL,
         NULL,
         (PCRE2_SPTR)replacement,

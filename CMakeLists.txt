@@ -37,9 +37,7 @@ setup_target_wall(${PROJECT_NAME})
 # Lua
 find_package(Lua REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LUA_LIBRARIES})
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${LUA_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${LUA_INCLUDE_DIR})
 
 # PCRE2
 find_package(PCRE2 REQUIRED CONFIG COMPONENTS 8BIT)
@@ -52,5 +50,6 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(third_party/cutest)
     add_subdirectory(test)
 endif()
