@@ -13,6 +13,13 @@ extern "C" {
 #include "lauxlib.h"
 #include "lualib.h"
 
+/*
+ * For compatibility.
+ */
+#if LUA_VERSION_NUM == 501
+#	define LUA_OK	0
+#endif
+
 #ifdef __cplusplus
 }
 #endif

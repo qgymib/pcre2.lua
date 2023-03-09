@@ -1,5 +1,7 @@
 # lua_pcre2
-A Lua wrapper for pcre2
+A Lua wrapper for pcre2.
+
+Support Lua version 5.1 / 5.2 / 5.3 / 5.4.
 
 ## Integration
 
@@ -67,10 +69,16 @@ cmake -DLUA_LIBRARIES=/path/to/lua/lib -DLUA_INCLUDE_DIR=/path/to/lua/include ..
 
 ### Chould not find a package configuration file provided by "PCRE2"
 
-It means cmake cannot find pcre2 on your system. If you are using a custom build pcre2, please set cmake variable `PCRE2_ROOT` / `PCRE2_USE_STATIC_LIBS` manually.
+It means cmake cannot find pcre2 on your system.
+
++ If you are using a custom build pcre2, please set cmake variable `PCRE2_ROOT` / `PCRE2_USE_STATIC_LIBS` manually.
 
 eg.
 
 ```
 cmake -DPCRE2_ROOT=/path/to/pcre2 -DPCRE2_USE_STATIC_LIBS=ON ..
 ```
+
++ If you are using system installed pcre2, it is likely the packager does not offer `pcre2-config.cmake`.
+
+

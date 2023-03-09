@@ -25,7 +25,12 @@ TEST_FIXTURE_TEAREDOWN(lpcre2)
 
 TEST_F(lpcre2, compile)
 {
+#if LUA_VERSION_NUM >= 503
 	ASSERT_EQ_INT(lua_getfield(g_test_compile.L, -1, "compile"), LUA_TFUNCTION);
+#else
+	lua_getfield(g_test_compile.L, -1, "compile");
+	ASSERT_EQ_INT(lua_type(g_test_compile.L, -1), LUA_TFUNCTION);
+#endif
 
 	/* parameter 1 */
 	const char* pattern = "asdf";

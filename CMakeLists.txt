@@ -40,8 +40,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${LUA_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${LUA_INCLUDE_DIR})
 
 # PCRE2
-find_package(PCRE2 REQUIRED CONFIG COMPONENTS 8BIT)
-target_link_libraries(${PROJECT_NAME} PRIVATE PCRE2::8BIT)
+find_package(PCRE2 CONFIG COMPONENTS 8BIT)
+if (PCRE2_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE PCRE2::8BIT)
+else ()
+    find_package(PkgConfig)
+    pkg_search_module(PCRE2DEP REQUIRED libpcre2-8)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PCRE2DEP_LIBRARIES})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${PCRE2DEP_INCLUDE_DIRS})
+endif ()
 
 ###############################################################################
 # Test

@@ -29,7 +29,12 @@ TEST_F(code, substitute_c)
 
 	/* pcre2.compile(pattern) */
 	{
+#if LUA_VERSION_NUM >= 503
 		ASSERT_EQ_INT(lua_getfield(g_test_substitute.L, -1, "compile"), LUA_TFUNCTION);
+#else
+		lua_getfield(g_test_substitute.L, -1, "compile");
+		ASSERT_EQ_INT(lua_type(g_test_substitute.L, -1), LUA_TFUNCTION);
+#endif
 
 		const char* pattern = "^(\\s*#\\s*include\\s+\"[-.\\w/]+\")";
 		lua_pushstring(g_test_substitute.L, pattern);
@@ -39,7 +44,12 @@ TEST_F(code, substitute_c)
 
 	/* code::substitute(content, replacement) */
 	{
+#if LUA_VERSION_NUM >= 503
 		ASSERT_EQ_INT(lua_getfield(g_test_substitute.L, -1, "substitute"), LUA_TFUNCTION);
+#else
+		lua_getfield(g_test_substitute.L, -1, "substitute");
+		ASSERT_EQ_INT(lua_type(g_test_substitute.L, -1), LUA_TFUNCTION);
+#endif
 
 		lua_pushvalue(g_test_substitute.L, sp + 1);
 

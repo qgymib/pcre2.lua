@@ -24,6 +24,40 @@
     xx(LPCRE2_SUBSTITUTE_UNKNOWN_UNSET,     PCRE2_SUBSTITUTE_UNKNOWN_UNSET) \
     xx(LPCRE2_SUBSTITUTE_REPLACEMENT_ONLY,  PCRE2_SUBSTITUTE_REPLACEMENT_ONLY)
 
+/*
+ * For compatibility.
+ */
+#if LUA_VERSION_NUM == 501
+#define luaL_newlib(L,l)  \
+  (luaL_newlibtable(L,l), luaL_setfuncs(L,l,0))
+#define luaL_newlibtable(L,l)	\
+  lua_createtable(L, 0, sizeof(l)/sizeof((l)[0]) - 1)
+
+static void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
+{
+    luaL_checkstack(L, nup, "too many upvalues");
+    for (; l->name != NULL; l++)
+    {
+        if (l->func == NULL)
+        {
+            lua_pushboolean(L, 0);
+        }
+        else
+        {
+            int i;
+            for (i = 0; i < nup; i++)
+            {
+                lua_pushvalue(L, -nup);
+            }
+            lua_pushcclosure(L, l->func, nup);
+        }
+        lua_setfield(L, -(nup + 2), l->name);
+    }
+    lua_pop(L, nup);
+}
+
+#endif
+
 struct lpcre2_code
 {
     pcre2_code* code;
@@ -104,7 +138,10 @@ static void _lpcre2_set_options(lua_State* L)
 
 int luaopen_lpcre2(lua_State* L)
 {
+#if LUA_VERSION_NUM >= 502
     luaL_checkversion(L);
+#endif
+
     _lpcre2_check_options(L);
 
     static const luaL_Reg pcre2_apis[] = {
@@ -165,6 +202,7 @@ const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
     uint32_t options, size_t* len)
 {
     int ret;
+    char* addr;
 
     PCRE2_SIZE outlength = 0;
     ret = pcre2_substitute(code->code,
@@ -184,7 +222,17 @@ const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
     }
 
     luaL_Buffer buf;
-    char* addr = luaL_buffinitsize(L, &buf, outlength);
+
+#if LUA_VERSION_NUM >= 502
+    addr = luaL_buffinitsize(L, &buf, outlength);
+#else
+    luaL_buffinit(L, &buf);
+    if ((addr = malloc(outlength)) == NULL)
+    {
+        luaL_error(L, "not enough memory");
+        return NULL;
+    }
+#endif
 
     ret = pcre2_substitute(code->code,
         (PCRE2_SPTR)subject,
@@ -202,7 +250,13 @@ const char* lpcre2_substitute(lua_State* L, lpcre2_code_t* code,
         goto error;
     }
 
+#if LUA_VERSION_NUM >= 502
     luaL_addsize(&buf, outlength);
+#else
+    luaL_addlstring(&buf, addr, outlength);
+    free(addr); addr = NULL;
+#endif
+
     luaL_pushresult(&buf);
 
     return lua_tolstring(L, -1, len);
