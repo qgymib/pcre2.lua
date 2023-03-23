@@ -17,7 +17,7 @@ TEST_FIXTURE_SETUP(lpcre2)
 	ASSERT_EQ_INT(luaopen_lpcre2(g_test_compile.L), 1);
 }
 
-TEST_FIXTURE_TEAREDOWN(lpcre2)
+TEST_FIXTURE_TEARDOWN(lpcre2)
 {
 	lua_close(g_test_compile.L);
 	g_test_compile.L = NULL;
