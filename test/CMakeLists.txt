@@ -2,6 +2,7 @@
 add_executable(lpcre2_test
     "case/compile.c"
     "case/luaopen.c"
+    "case/match.c"
     "case/substitute.c"
     "test.c")
 

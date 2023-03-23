@@ -80,5 +80,3 @@ cmake -DPCRE2_ROOT=/path/to/pcre2 -DPCRE2_USE_STATIC_LIBS=ON ..
 ```
 
 + If you are using system installed pcre2, it is likely the packager does not offer `pcre2-config.cmake`.
-
-
