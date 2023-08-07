@@ -16,7 +16,6 @@ typedef struct lpcre2_match_data
      * The value have following meanings:
      * + 0: Match success.
      * + >0: Match success, and the value is the number of captured groups.
-     * + <0: Match failure.
      */
     int rc;
 } lpcre2_match_data_t;

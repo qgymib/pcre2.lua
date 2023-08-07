@@ -69,6 +69,21 @@ static void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)
 
 #endif
 
+#if LUA_VERSION_NUM <= 502
+
+static void lua_seti(lua_State* L, int idx, lua_Integer n)
+{
+    int sp = lua_gettop(L); // This is where value at.
+    int sp_table = idx > 0 ? idx : sp + idx + 1;
+
+    lua_pushinteger(L, n); // sp+1: where key at.
+    lua_insert(L, sp); // route
+
+    lua_settable(L, sp_table);
+}
+
+#endif
+
 struct lpcre2_code
 {
     pcre2_code* code;
@@ -80,17 +95,6 @@ typedef struct lpcre2_match_data_impl
     lpcre2_match_data_t base;
     pcre2_match_data*   data;
 } lpcre2_match_data_impl_t;
-
-typedef struct lpcre2_match_data_iter
-{
-#define LPCRE2_MATCH_DATA_ITER_UV_STR   1
-#define LPCRE2_MATCH_DATA_ITER_UV_MD    2
-
-    lpcre2_match_data_impl_t* match_data;
-
-    const char* content;
-    size_t      content_sz;
-} lpcre2_match_data_iter_t;
 
 static int _lpcre2_code_gc(lua_State* L)
 {
@@ -115,7 +119,10 @@ static int _lpcre2_match(lua_State* L)
     size_t offset = lua_tointeger(L, 3);
     uint32_t options = (uint32_t)lua_tointeger(L, 4);
 
-    lpcre2_match(L, code, subject, subject_sz, offset, options);
+    if (lpcre2_match(L, code, subject, subject_sz, offset, options) == NULL)
+    {
+        return 0;
+    }
     return 1;
 }
 
@@ -173,56 +180,6 @@ static void _lpcre2_set_options(lua_State* L)
 #undef LLCRE2_SET_OPTION
 }
 
-static int _lpcre2_match_data_iter_next(lua_State* L)
-{
-	size_t len = 0;
-	size_t beg_off = 0;
-
-	lpcre2_match_data_iter_t* iter = lua_touserdata(L, 1);
-	lpcre2_match_data_impl_t* match_data = iter->match_data;
-
-	if (match_data->base.rc <= 0)
-	{
-		return 0;
-	}
-
-	int idx = 0;
-	if (lua_type(L, 2) == LUA_TNUMBER)
-	{
-		idx = (int)lua_tointeger(L, 2) + 1;
-	}
-
-	if (idx > match_data->base.rc)
-	{
-		return 0;
-	}
-
-	beg_off = lpcre2_match_data_ovector(L, &match_data->base, idx, &len);
-	lua_pushinteger(L, idx);
-	lua_pushlstring(L, iter->content + beg_off, len);
-
-	return 2;
-}
-
-static int _lpcre2_match_data_iter(lua_State* L)
-{
-	lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
-
-	size_t content_sz;
-	const char* content = luaL_checklstring(L, 2, &content_sz);
-
-	lua_pushcfunction(L, _lpcre2_match_data_iter_next);
-
-	lpcre2_match_data_iter_t* iter = lua_newuserdata(L, sizeof(lpcre2_match_data_iter_t));
-	iter->match_data = match_data;
-	iter->content = content;
-	iter->content_sz = content_sz;
-
-	lua_pushnil(L);
-
-	return 3;
-}
-
 int luaopen_lpcre2(lua_State* L)
 {
 #if LUA_VERSION_NUM >= 502
@@ -277,7 +234,8 @@ lpcre2_code_t* lpcre2_compile(lua_State* L, const char* pattern,
     {
         pcre2_get_error_message(errcode, code->message,
             sizeof(code->message) / sizeof(PCRE2_UCHAR));
-        luaL_error(L, "%s", code->message);
+        luaL_error(L, "compile pattern `%s` error at %d: %s",
+            pattern, (int)erroffset, code->message);
         return NULL;
     }
 
@@ -355,19 +313,12 @@ error:
     return NULL;
 }
 
-static int _lpcre2_match_matched(lua_State* L)
-{
-    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
-    lua_pushboolean(L, match_data->base.rc >= 0);
-    return 1;
-}
-
 static int _lpcre2_match_group(lua_State* L)
 {
     lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
 
-	size_t content_sz;
-	const char* content = luaL_checklstring(L, 2, &content_sz);
+    size_t content_sz;
+    const char* content = luaL_checklstring(L, 2, &content_sz);
 
     int idx = (int)luaL_checkinteger(L, 3);
 
@@ -384,24 +335,55 @@ static int _lpcre2_match_group(lua_State* L)
     return 1;
 }
 
-static int _lpcre2_match_groups(lua_State* L)
+static int _lpcre2_match_all_groups(lua_State* L)
 {
     int idx;
-	lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+    lua_settop(L, 2);
 
-	size_t content_sz;
-	const char* content = luaL_checklstring(L, 2, &content_sz);
+    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
 
+    size_t content_sz;
+    const char* content = luaL_checklstring(L, 2, &content_sz);
+
+    lua_newtable(L); // sp:3
     for (idx = 0; idx <= match_data->base.rc; idx++)
     {
         size_t len = 0;
         size_t offset = lpcre2_match_data_ovector(L, &match_data->base, idx, &len);
 
         const char* data = content + offset;
-        lua_pushlstring(L, data, len);
+        lua_pushlstring(L, data, len); // sp:4
+
+        lua_seti(L, -2, idx);
     }
 
-    return match_data->base.rc >= 0 ? match_data->base.rc : 0;
+    return 1;
+}
+
+static int _lpcre2_match_group_count(lua_State* L)
+{
+    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+
+    lua_pushinteger(L, match_data->base.rc);
+    return 1;
+}
+
+static int _lpcre2_match_group_offset(lua_State* L)
+{
+    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+
+    lua_Integer group_idx = luaL_checkinteger(L, 2);
+    if (group_idx < 0 || group_idx > match_data->base.rc)
+    {
+        return luaL_error(L, "index out of range.");
+    }
+
+    size_t len = 0;
+    size_t offset = lpcre2_match_data_ovector(L, &match_data->base, group_idx, &len);
+
+    lua_pushinteger(L, offset + 1);
+    lua_pushinteger(L, len);
+    return 2;
 }
 
 lpcre2_match_data_t* lpcre2_match(lua_State* L, lpcre2_code_t* code,
@@ -415,11 +397,11 @@ lpcre2_match_data_t* lpcre2_match(lua_State* L, lpcre2_code_t* code,
         { NULL,         NULL },
     };
     static const luaL_Reg s_method[] = {
-        { "iter",       _lpcre2_match_data_iter },
-        { "matched",    _lpcre2_match_matched },
-        { "group",      _lpcre2_match_group },
-        { "groups",     _lpcre2_match_groups },
-        { NULL,         NULL },
+        { "all_groups",     _lpcre2_match_all_groups },
+        { "group",          _lpcre2_match_group },
+        { "group_count",    _lpcre2_match_group_count },
+        { "group_offset",   _lpcre2_match_group_offset },
+        { NULL,             NULL },
     };
     if (luaL_newmetatable(L, LPCRE2_MATCH_DATA_NAME) != 0)
     {
@@ -448,8 +430,8 @@ lpcre2_match_data_t* lpcre2_match(lua_State* L, lpcre2_code_t* code,
     {
         if (data->base.rc == PCRE2_ERROR_NOMATCH)
         {
-            data->base.rc = -1;
-            return &data->base;
+            lua_pop(L, 1);
+            return NULL;
         }
 
         pcre2_get_error_message(data->base.rc, code->message,

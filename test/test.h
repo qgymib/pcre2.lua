@@ -20,6 +20,8 @@ extern "C" {
 #	define LUA_OK	0
 #endif
 
+#define LF	"\n"
+
 #ifdef __cplusplus
 }
 #endif

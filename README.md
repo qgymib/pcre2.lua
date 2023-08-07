@@ -36,10 +36,50 @@ The second parameter is optional, which is Bit-OR of following flags:
 + lpcre2.`LPCRE2_EXTENDED`: Ignore white space and # comments
 + lpcre2.`LPCRE2_MULTILINE`: `^` and `$` match newlines within data.
 
+#### match()
+
+```lua
+matchdata = code:match(subject[, OFFSET[, OPTIONS]])
+```
+
+Matches a compiled regular expression against a given subject. A matchdata object is returned if match found, or nil if not found.
+
+#### all_groups()
+
+```lua
+table = matchdata:all_groups(subject)
+```
+
+Return a list of all captured groups. `[0]` is the whole group, `[1]` is group 1, `[2]` is group 2, and so on.
+
+#### group()
+
+```lua
+string = matchdata:group(subject, index)
+```
+
+Return the content of captured group.
+
+### group_count()
+
+```lua
+integer = matchdata:group_count()
+```
+
+Get the number of captured groups.
+
+#### group_offset()
+
+```lua
+beg,len = matchdata:group_offset(index)
+```
+
+Get the offset and length of captured group.
+
 #### substitute()
 
 ```lua
-string = code::substitute(subject, replacement[, OPTIONS])
+string = code:substitute(subject, replacement[, OPTIONS])
 ```
 
 Matches a compiled regular expression against a given subject, makes a copy of the subject, substituting a replacement string for what was matched.
@@ -50,6 +90,7 @@ The third parameter is optional, which is Bit-OR of following flags:
 + lpcre2.`LPCRE2_SUBSTITUTE_UNSET_EMPTY`: Simple unset insert = empty string
 + lpcre2.`LPCRE2_SUBSTITUTE_UNKNOWN_UNSET`: Treat unknown group as unset.
 + lpcre2.`LPCRE2_SUBSTITUTE_REPLACEMENT_ONLY`: Return only replacement string(s).
+
 
 ### C API
 
