@@ -8,28 +8,28 @@
 
 #include "lua.h"
 #include "lauxlib.h"
-#include "lua_pcre2.h"
+#include "pcre2.lua.h"
 
 #define LPCRE2_CODE_NAME            "_lpcre2_code"
 #define LPCRE2_MATCH_DATA_NAME      "_lpcre2_match_data"
 #define LPCRE2_MATCH_DATA_ITER_NAME "_lpcre2_match_data_iter"
 
 #define LPCRE2_OPTION_MAP(xx)   \
-    xx(LPCRE2_ALLOW_EMPTY_CLASS,            PCRE2_ALLOW_EMPTY_CLASS)            \
-    xx(LPCRE2_NOTEMPTY,                     PCRE2_NOTEMPTY)                     \
-    xx(LPCRE2_NOTEMPTY_ATSTART,             PCRE2_NOTEMPTY_ATSTART)             \
-    xx(LPCRE2_DOTALL,                       PCRE2_DOTALL)                       \
-    xx(LPCRE2_EXTENDED,                     PCRE2_EXTENDED)                     \
-    xx(LPCRE2_MULTILINE,                    PCRE2_MULTILINE)                    \
-    xx(LPCRE2_ENDANCHORED,                  PCRE2_ENDANCHORED)                  \
-    xx(LPCRE2_NO_UTF_CHECK,                 PCRE2_NO_UTF_CHECK)                 \
-    xx(LPCRE2_ANCHORED,                     PCRE2_ANCHORED)                     \
-                                                                                \
-    xx(LPCRE2_SUBSTITUTE_GLOBAL,            PCRE2_SUBSTITUTE_GLOBAL)            \
-    xx(LPCRE2_SUBSTITUTE_EXTENDED,          PCRE2_SUBSTITUTE_EXTENDED)          \
-    xx(LPCRE2_SUBSTITUTE_UNSET_EMPTY,       PCRE2_SUBSTITUTE_UNSET_EMPTY)       \
-    xx(LPCRE2_SUBSTITUTE_UNKNOWN_UNSET,     PCRE2_SUBSTITUTE_UNKNOWN_UNSET)     \
-    xx(LPCRE2_SUBSTITUTE_REPLACEMENT_ONLY,  PCRE2_SUBSTITUTE_REPLACEMENT_ONLY)
+    xx(PCRE2_ALLOW_EMPTY_CLASS)            \
+    xx(PCRE2_NOTEMPTY)                     \
+    xx(PCRE2_NOTEMPTY_ATSTART)             \
+    xx(PCRE2_DOTALL)                       \
+    xx(PCRE2_EXTENDED)                     \
+    xx(PCRE2_MULTILINE)                    \
+    xx(PCRE2_ENDANCHORED)                  \
+    xx(PCRE2_NO_UTF_CHECK)                 \
+    xx(PCRE2_ANCHORED)                     \
+                                           \
+    xx(PCRE2_SUBSTITUTE_GLOBAL)            \
+    xx(PCRE2_SUBSTITUTE_EXTENDED)          \
+    xx(PCRE2_SUBSTITUTE_UNSET_EMPTY)       \
+    xx(PCRE2_SUBSTITUTE_UNKNOWN_UNSET)     \
+    xx(PCRE2_SUBSTITUTE_REPLACEMENT_ONLY)
 
 #define container_of(ptr, TYPE, member) \
     ((TYPE*)((char*)(ptr) - (char*)&((TYPE*)0)->member))
@@ -38,6 +38,7 @@
  * For compatibility.
  */
 #if LUA_VERSION_NUM == 501
+
 #define luaL_newlib(L,l)  \
   (luaL_newlibtable(L,l), luaL_setfuncs(L,l,0))
 #define luaL_newlibtable(L,l)   \
@@ -161,29 +162,11 @@ static int _lpcre2_compile(lua_State* L)
     return 1;
 }
 
-static void _lpcre2_check_options(lua_State* L)
-{
-#define LPCRE2_CHECK_OPTION(OPT_LPCRE2, OPT_PCRE2)  \
-    do {\
-        int lpcre2_opt_val = OPT_LPCRE2;\
-        int pcre2_opt_val = OPT_PCRE2;\
-        if (lpcre2_opt_val != pcre2_opt_val) {\
-            luaL_error(L, "except %s == %s, actual %I vs %I",\
-                #OPT_LPCRE2, #OPT_PCRE2,\
-                (lua_Integer)lpcre2_opt_val, (lua_Integer)pcre2_opt_val);\
-        }\
-    } while (0);
-
-    LPCRE2_OPTION_MAP(LPCRE2_CHECK_OPTION);
-
-#undef LPCRE2_CHECK_OPTION
-}
-
 static void _lpcre2_set_options(lua_State* L)
 {
-#define LLCRE2_SET_OPTION(OPT_LPCRE2, OPT_PCRE2)    \
-    lua_pushinteger(L, OPT_LPCRE2);\
-    lua_setfield(L, -2, #OPT_LPCRE2);
+#define LLCRE2_SET_OPTION(OPT_PCRE2)    \
+    lua_pushinteger(L, OPT_PCRE2);\
+    lua_setfield(L, -2, #OPT_PCRE2);
 
     LPCRE2_OPTION_MAP(LLCRE2_SET_OPTION);
 
@@ -245,8 +228,6 @@ int luaopen_lpcre2(lua_State* L)
 #if LUA_VERSION_NUM >= 502
     luaL_checkversion(L);
 #endif
-
-    _lpcre2_check_options(L);
 
     static const luaL_Reg pcre2_apis[] = {
         { "compile",    _lpcre2_compile },
@@ -374,6 +355,55 @@ error:
     return NULL;
 }
 
+static int _lpcre2_match_matched(lua_State* L)
+{
+    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+    lua_pushboolean(L, match_data->base.rc >= 0);
+    return 1;
+}
+
+static int _lpcre2_match_group(lua_State* L)
+{
+    lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+
+	size_t content_sz;
+	const char* content = luaL_checklstring(L, 2, &content_sz);
+
+    int idx = (int)luaL_checkinteger(L, 3);
+
+    if (idx > match_data->base.rc)
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    size_t len = 0;
+    size_t offset = lpcre2_match_data_ovector(L, &match_data->base, idx, &len);
+
+    lua_pushlstring(L, content + offset, len);
+    return 1;
+}
+
+static int _lpcre2_match_groups(lua_State* L)
+{
+    int idx;
+	lpcre2_match_data_impl_t* match_data = luaL_checkudata(L, 1, LPCRE2_MATCH_DATA_NAME);
+
+	size_t content_sz;
+	const char* content = luaL_checklstring(L, 2, &content_sz);
+
+    for (idx = 0; idx <= match_data->base.rc; idx++)
+    {
+        size_t len = 0;
+        size_t offset = lpcre2_match_data_ovector(L, &match_data->base, idx, &len);
+
+        const char* data = content + offset;
+        lua_pushlstring(L, data, len);
+    }
+
+    return match_data->base.rc >= 0 ? match_data->base.rc : 0;
+}
+
 lpcre2_match_data_t* lpcre2_match(lua_State* L, lpcre2_code_t* code,
     const char* subject, size_t length, size_t offset, uint32_t options)
 {
@@ -381,12 +411,15 @@ lpcre2_match_data_t* lpcre2_match(lua_State* L, lpcre2_code_t* code,
     data->data = NULL;
 
     static const luaL_Reg s_meta[] = {
-        { "__gc",   _lpcre2_match_data_gc },
-        { NULL,     NULL },
+        { "__gc",       _lpcre2_match_data_gc },
+        { NULL,         NULL },
     };
     static const luaL_Reg s_method[] = {
-        { "iter",   _lpcre2_match_data_iter },
-        { NULL,     NULL },
+        { "iter",       _lpcre2_match_data_iter },
+        { "matched",    _lpcre2_match_matched },
+        { "group",      _lpcre2_match_group },
+        { "groups",     _lpcre2_match_groups },
+        { NULL,         NULL },
     };
     if (luaL_newmetatable(L, LPCRE2_MATCH_DATA_NAME) != 0)
     {

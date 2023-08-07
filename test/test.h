@@ -2,7 +2,7 @@
 #define __TEST_H__
 
 #include "cutest.h"
-#include "lua_pcre2.h"
+#include "pcre2.lua.h"
 #include <string.h>
 
 #ifdef __cplusplus

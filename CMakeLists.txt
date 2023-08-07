@@ -19,7 +19,7 @@ endfunction()
 ###############################################################################
 
 add_library(${PROJECT_NAME}
-    "src/lua_pcre2.c")
+    "src/pcre2.lua.c")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
