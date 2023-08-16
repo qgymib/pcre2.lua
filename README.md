@@ -71,10 +71,10 @@ Get the number of captured groups.
 #### group_offset()
 
 ```lua
-beg,len = matchdata:group_offset(index)
+off_beg,off_len = matchdata:group_offset(index)
 ```
 
-Get the offset and length of captured group.
+Get the begin and end offset of the captured group.
 
 #### substitute()
 

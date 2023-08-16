@@ -382,7 +382,7 @@ static int _lpcre2_match_group_offset(lua_State* L)
     size_t offset = lpcre2_match_data_ovector(L, &match_data->base, group_idx, &len);
 
     lua_pushinteger(L, offset + 1);
-    lua_pushinteger(L, len);
+    lua_pushinteger(L, offset + 1 + len - 1);
     return 2;
 }
 

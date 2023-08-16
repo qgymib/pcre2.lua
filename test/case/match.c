@@ -42,17 +42,9 @@ LF
 "    assert(res[i] == v)" LF
 "end" LF
 LF
-"local off,len = match:group_offset(0)" LF
-"assert(off == 1)" LF
-"assert(len == 11)" LF
-LF
-"local off,len = match:group_offset(1)" LF
-"assert(off == 1)" LF
-"assert(len == 5)" LF
-LF
-"local off,len = match:group_offset(2)" LF
-"assert(off == 7)" LF
-"assert(len == 5)" LF
+"assert(string.sub(content, match:group_offset(0)) == res[0])" LF
+"assert(string.sub(content, match:group_offset(1)) == res[1])" LF
+"assert(string.sub(content, match:group_offset(2)) == res[2])" LF
 ;
 
 	lua_setglobal(g_test_match.L, "lpcre2");
